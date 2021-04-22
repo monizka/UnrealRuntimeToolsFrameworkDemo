@@ -41,10 +41,13 @@ FInputRayHit USceneObjectSelectionInteraction::IsHitByClick(const FInputDeviceRa
 		return RayHit;
 	}
 
+	auto subsystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(subsystem);
+
 	FVector HitPoint, BaryCoords;
 	float HitDist;
 	int32 HitTri;
-	URuntimeMeshSceneObject* HitObject = URuntimeMeshSceneSubsystem::Get()->FindNearestHitObject(
+	URuntimeMeshSceneObject* HitObject = subsystem->FindNearestHitObject(
 		ClickPos.WorldRay.Origin, ClickPos.WorldRay.Direction, HitPoint, HitDist, HitTri, BaryCoords);
 
 	if (HitObject != nullptr)
@@ -68,30 +71,33 @@ FInputRayHit USceneObjectSelectionInteraction::IsHitByClick(const FInputDeviceRa
 
 void USceneObjectSelectionInteraction::OnClicked(const FInputDeviceRay& ClickPos)
 {
+	auto subsystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(subsystem);
+
 	FVector HitPoint, BaryCoords;
 	float HitDist;
 	int32 HitTri;
-	URuntimeMeshSceneObject* HitObject = URuntimeMeshSceneSubsystem::Get()->FindNearestHitObject(
+	URuntimeMeshSceneObject* HitObject = subsystem->FindNearestHitObject(
 		ClickPos.WorldRay.Origin, ClickPos.WorldRay.Direction, HitPoint, HitDist, HitTri, BaryCoords);
 
 	if (HitObject != nullptr)
 	{
 		if (bAddToSelectionEnabled)
 		{
-			URuntimeMeshSceneSubsystem::Get()->SetSelected(HitObject, false, false);
+			subsystem->SetSelected(HitObject, false, false);
 		}
 		else if (bToggleSelectionEnabled)
 		{
-			URuntimeMeshSceneSubsystem::Get()->ToggleSelected(HitObject);
+			subsystem->ToggleSelected(HitObject);
 		}
 		else
 		{
-			URuntimeMeshSceneSubsystem::Get()->SetSelected(HitObject, false, true);
+			subsystem->SetSelected(HitObject, false, true);
 		}
 	}
 	else
 	{
-		URuntimeMeshSceneSubsystem::Get()->ClearSelection();
+		subsystem->ClearSelection();
 	}
 
 }

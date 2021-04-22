@@ -49,7 +49,7 @@ public:
 		StateOut.GizmoManager = ToolsContext->GizmoManager;
 		StateOut.World = TargetWorld;
 
-		const TArray<URuntimeMeshSceneObject*>& Selection = URuntimeMeshSceneSubsystem::Get()->GetSelection();
+		const TArray<URuntimeMeshSceneObject*>& Selection = GetSubsystem<URuntimeMeshSceneSubsystem>()->GetSelection();
 		for (URuntimeMeshSceneObject* SO : Selection)
 		{
 			StateOut.SelectedActors.Add(SO->GetActor());
@@ -81,7 +81,7 @@ public:
 
 	virtual EToolContextCoordinateSystem GetCurrentCoordinateSystem() const override
 	{
-		return URuntimeToolsFrameworkSubsystem::Get()->GetCurrentCoordinateSystem();
+		return GetSubsystem<URuntimeToolsFrameworkSubsystem>()->GetCurrentCoordinateSystem();
 	}
 
 	virtual bool ExecuteSceneSnapQuery(const FSceneSnapQueryRequest& Request, TArray<FSceneSnapQueryResult>& Results) const override
@@ -104,7 +104,16 @@ public:
 protected:
 	UInteractiveToolsContext* ToolsContext;
 	UWorld* TargetWorld;
+	URuntimeMeshSceneSubsystem* SceneSubsystem;
+	URuntimeToolsFrameworkSubsystem* ToolsSubsystem;
 	AToolsContextActor* ContextActor = nullptr;
+
+private:
+	template <typename TSubsystemClass>
+	TSubsystemClass* GetSubsystem() const
+	{
+		return TargetWorld->GetGameInstance()->GetSubsystem<TSubsystemClass>();
+	}
 };
 
 
@@ -113,7 +122,11 @@ protected:
 class FRuntimeToolsContextTransactionImpl : public IToolsContextTransactionsAPI
 {
 public:
-	
+	FRuntimeToolsContextTransactionImpl(UWorld* InWorld)
+	{
+		TargetWorld = InWorld;
+	}
+
 	bool bInTransaction = false;
 
 	virtual void DisplayMessage(const FText& Message, EToolMessageLevel Level) override
@@ -128,13 +141,13 @@ public:
 
 	virtual void BeginUndoTransaction(const FText& Description) override
 	{
-		URuntimeToolsFrameworkSubsystem::Get()->SceneHistory->BeginTransaction(Description);
+		GetSubsystem<URuntimeToolsFrameworkSubsystem>()->SceneHistory->BeginTransaction(Description);
 		bInTransaction = true;
 	}
 
 	virtual void EndUndoTransaction() override
 	{
-		URuntimeToolsFrameworkSubsystem::Get()->SceneHistory->EndTransaction();
+		GetSubsystem<URuntimeToolsFrameworkSubsystem>()->SceneHistory->EndTransaction();
 		bInTransaction = false;
 	}
 
@@ -147,7 +160,7 @@ public:
 			bCloseTransaction = true;
 		}
 
-		URuntimeToolsFrameworkSubsystem::Get()->SceneHistory->AppendChange(TargetObject, MoveTemp(Change), Description);
+		GetSubsystem<URuntimeToolsFrameworkSubsystem>()->SceneHistory->AppendChange(TargetObject, MoveTemp(Change), Description);
 
 		if (bCloseTransaction)
 		{
@@ -159,6 +172,16 @@ public:
 	{
 		// not supported. Would need to map elements of SelectionChange to MeshSceneObjects.
 		return false;
+	}
+
+protected:
+	UWorld* TargetWorld;
+
+private:
+	template <typename TSubsystemClass>
+	TSubsystemClass* GetSubsystem() const
+	{
+		return TargetWorld->GetGameInstance()->GetSubsystem<TSubsystemClass>();
 	}
 };
 
@@ -211,8 +234,9 @@ public:
 		FString ObjectBaseName,
 		FGeneratedStaticMeshAssetConfig&& AssetConfig) override
 	{
-
-		URuntimeMeshSceneObject* SceneObject = URuntimeMeshSceneSubsystem::Get()->CreateNewSceneObject();
+		auto subsystem = TargetWorld->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+		check(subsystem);
+		URuntimeMeshSceneObject* SceneObject = subsystem->CreateNewSceneObject();
 		SceneObject->Initialize(TargetWorld, AssetConfig.MeshDescription.Get());
 		SceneObject->SetTransform(Transform);
 		return SceneObject->GetActor();
@@ -229,36 +253,23 @@ public:
 
 };
 
-
-
-URuntimeToolsFrameworkSubsystem* URuntimeToolsFrameworkSubsystem::InstanceSingleton = nullptr;
-
-void URuntimeToolsFrameworkSubsystem::InitializeSingleton(URuntimeToolsFrameworkSubsystem* Subsystem)
+void URuntimeToolsFrameworkSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	check(InstanceSingleton == nullptr);
-	InstanceSingleton = Subsystem;
+	Super::Initialize(Collection);
+	InitializeToolsContext();
 }
-
-
-URuntimeToolsFrameworkSubsystem* URuntimeToolsFrameworkSubsystem::Get()
-{
-	check(InstanceSingleton);
-	return InstanceSingleton;
-}
-
 
 void URuntimeToolsFrameworkSubsystem::Deinitialize()
 {
+	Super::Deinitialize();
 	ShutdownToolsContext();
-
-	InstanceSingleton = nullptr;
 }
 
 
-void URuntimeToolsFrameworkSubsystem::InitializeToolsContext(UWorld* TargetWorldIn)
+void URuntimeToolsFrameworkSubsystem::InitializeToolsContext()
 {
-	TargetWorld = TargetWorldIn;
-
+	auto TargetWorld = GetWorld();
+	
 	ToolsContext = NewObject<UInteractiveToolsContext>();
 	
 	ContextQueriesAPI = MakeShared<FRuntimeToolsContextQueriesImpl>(ToolsContext, TargetWorld);
@@ -267,7 +278,7 @@ void URuntimeToolsFrameworkSubsystem::InitializeToolsContext(UWorld* TargetWorld
 		ContextQueriesAPI->SetContextActor(ContextActor);
 	}
 
-	ContextTransactionsAPI = MakeShared<FRuntimeToolsContextTransactionImpl>();
+	ContextTransactionsAPI = MakeShared<FRuntimeToolsContextTransactionImpl>(TargetWorld);
 
 	ContextAssetAPI = MakeShared<FRuntimeToolsContextAssetImpl>();
 
@@ -283,7 +294,7 @@ void URuntimeToolsFrameworkSubsystem::InitializeToolsContext(UWorld* TargetWorld
 
 
 	// register selection interaction
-	SelectionInteraction = NewObject<USceneObjectSelectionInteraction>();
+	SelectionInteraction = NewObject<USceneObjectSelectionInteraction>(this);
 	SelectionInteraction->Initialize([this]() 
 	{
 		return HaveActiveTool() == false;
@@ -292,7 +303,9 @@ void URuntimeToolsFrameworkSubsystem::InitializeToolsContext(UWorld* TargetWorld
 
 
 	// create transform interaction
-	TransformInteraction = NewObject<USceneObjectTransformInteraction>();
+	TransformInteraction = NewObject<USceneObjectTransformInteraction>(this);
+	
+	// TODO : RuntimeSceneMeshSubsystem needs to be initialized before this
 	TransformInteraction->Initialize([this]()
 	{
 		return HaveActiveTool() == false;
@@ -336,7 +349,6 @@ void URuntimeToolsFrameworkSubsystem::ShutdownToolsContext()
 		PDIRenderComponent = nullptr;
 	}
 
-	TargetWorld = nullptr;
 	ToolsContext = nullptr;
 	ContextActor = nullptr;
 
@@ -424,7 +436,13 @@ public:
 PRAGMA_DISABLE_OPTIMIZATION
 void URuntimeToolsFrameworkSubsystem::Tick(float DeltaTime)
 {
+	Super::Tick(DeltaTime);
+
+#if WITH_EDITOR
+	if (ContextActor == nullptr) return;
+#else
 	if (ensure(ContextActor) == false) return;
+#endif
 
 	GizmoRenderingUtil::SetGlobalFocusedEditorSceneView(nullptr);
 
@@ -435,7 +453,7 @@ void URuntimeToolsFrameworkSubsystem::Tick(float DeltaTime)
 	FVector2D LastMousePosition = FSlateApplication::Get().GetLastCursorPos();
 	FModifierKeysState ModifierState = FSlateApplication::Get().GetModifierKeys();
 
-	UGameViewportClient* ViewportClient = TargetWorld->GetGameViewport();
+	UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
 	TSharedPtr<IGameLayerManager> LayerManager = ViewportClient->GetGameLayerManager();
 	FGeometry ViewportGeometry;
 	if (ensure(LayerManager.IsValid()))
@@ -460,7 +478,7 @@ void URuntimeToolsFrameworkSubsystem::Tick(float DeltaTime)
 		FEngineShowFlags* ShowFlags = ViewportClient->GetEngineShowFlags();
 		FSceneViewFamilyContext ViewFamily(FSceneViewFamily::ConstructionValues(
 			ViewportClient->Viewport,
-			TargetWorld->Scene,
+			GetWorld()->Scene,
 			*ShowFlags)
 			.SetRealtimeUpdate(true));
 
@@ -768,9 +786,12 @@ URuntimeMeshSceneObject* URuntimeToolsFrameworkSubsystem::ImportMeshSceneObject(
 	{
 		ImportMesh->AppendSphere(200, 8, 8);
 	}
-
-	URuntimeMeshSceneObject* SceneObject = URuntimeMeshSceneSubsystem::Get()->CreateNewSceneObject();
-	SceneObject->Initialize(TargetWorld, ImportMesh->GetMesh().Get());
+	
+	auto sceneSystem = GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(sceneSystem);
+	
+	URuntimeMeshSceneObject* SceneObject = sceneSystem->CreateNewSceneObject();
+	SceneObject->Initialize(GetWorld(), ImportMesh->GetMesh().Get());
 
 	return SceneObject;
 }

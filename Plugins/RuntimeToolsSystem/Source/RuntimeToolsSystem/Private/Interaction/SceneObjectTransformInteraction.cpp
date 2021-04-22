@@ -10,8 +10,11 @@
 void USceneObjectTransformInteraction::Initialize(TUniqueFunction<bool()> GizmoEnabledCallbackIn)
 {
 	GizmoEnabledCallback = MoveTemp(GizmoEnabledCallbackIn);
+	// TODO : It may not be found if URuntimeMeshSceneSubsystem is not initialized before URuntimeToolsSubsystem
+	auto sceneSystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(sceneSystem);
 
-	SelectionChangedEventHandle = URuntimeMeshSceneSubsystem::Get()->OnSelectionModified.AddLambda([this](URuntimeMeshSceneSubsystem* SceneSubsystem)
+	SelectionChangedEventHandle = sceneSystem->OnSelectionModified.AddLambda([this](URuntimeMeshSceneSubsystem* SceneSubsystem)
 	{
 		UpdateGizmoTargets(SceneSubsystem->GetSelection());
 	});
@@ -22,9 +25,11 @@ void USceneObjectTransformInteraction::Shutdown()
 {
 	if (SelectionChangedEventHandle.IsValid())
 	{
-		if (URuntimeMeshSceneSubsystem::Get())
+		auto subsystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+
+		if (subsystem)
 		{
-			URuntimeMeshSceneSubsystem::Get()->OnSelectionModified.Remove(SelectionChangedEventHandle);
+			subsystem->OnSelectionModified.Remove(SelectionChangedEventHandle);
 		}
 		SelectionChangedEventHandle = FDelegateHandle();
 	}
@@ -54,16 +59,21 @@ void USceneObjectTransformInteraction::SetEnableNonUniformScaling(bool bEnable)
 
 void USceneObjectTransformInteraction::ForceUpdateGizmoState()
 {
-	if (URuntimeMeshSceneSubsystem::Get())
+	auto subsystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+
+	if (subsystem)
 	{
-		UpdateGizmoTargets(URuntimeMeshSceneSubsystem::Get()->GetSelection());
+		UpdateGizmoTargets(subsystem->GetSelection());
 	}
 }
 
 
 void USceneObjectTransformInteraction::UpdateGizmoTargets(const TArray<URuntimeMeshSceneObject*>& Selection)
 {
-	UInteractiveGizmoManager* GizmoManager = URuntimeToolsFrameworkSubsystem::Get()->ToolsContext->GizmoManager;
+	auto subsystem = GetWorld()->GetGameInstance()->GetSubsystem<URuntimeToolsFrameworkSubsystem>();
+	check(subsystem);
+
+	UInteractiveGizmoManager* GizmoManager = subsystem->ToolsContext->GizmoManager;
 
 	// destroy existing gizmos if we have any
 	if (TransformGizmo != nullptr)

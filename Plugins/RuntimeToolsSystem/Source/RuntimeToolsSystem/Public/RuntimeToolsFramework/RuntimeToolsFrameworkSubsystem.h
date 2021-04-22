@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/GameInstanceSubsystem.h"
+#include "RuntimeToolsBaseSubsystem.h"
 #include "InteractiveToolsContext.h"
 
 #include "ToolsContextRenderComponent.h"
@@ -23,7 +23,7 @@ class AToolsContextActor;
  * 
  */
 UCLASS()
-class RUNTIMETOOLSSYSTEM_API URuntimeToolsFrameworkSubsystem : public UGameInstanceSubsystem
+class RUNTIMETOOLSSYSTEM_API URuntimeToolsFrameworkSubsystem : public URuntimeToolsBaseSubsystem
 {
 	GENERATED_BODY()
 	
@@ -32,33 +32,25 @@ class RUNTIMETOOLSSYSTEM_API URuntimeToolsFrameworkSubsystem : public UGameInsta
 	// look up a GameInstance subsystem. We store the pointer and then allow ::Get() to return it (ie actually a Singleton)
 	//
 public:
-	static void InitializeSingleton(URuntimeToolsFrameworkSubsystem* Subsystem);
-	static URuntimeToolsFrameworkSubsystem* Get();
-protected:
-	static URuntimeToolsFrameworkSubsystem* InstanceSingleton;
-
 
 	//
 	// UGameInstanceSubsystem API implementation
 	//
-public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-
 
 	//
 	// Functions to setup/shutdown/operate the RuntimeToolsFramework
 	//
-public:
-	void InitializeToolsContext(UWorld* TargetWorld);
+	void InitializeToolsContext();
 	void ShutdownToolsContext();
 	void SetContextActor(AToolsContextActor* ActorIn);
-	virtual void Tick(float DeltaTime);
+	virtual void Tick(float DeltaTime) override;
 
 
 	//
 	// Access to various data structures created/tracked by the Subsystem
 	//
-
 	IToolsContextTransactionsAPI* GetTransactionsAPI();
 	IToolsContextAssetAPI* GetAssetAPI();
 
@@ -142,9 +134,6 @@ protected:
 
 
 public:
-	UPROPERTY()
-	UWorld* TargetWorld;
-
 	UPROPERTY()
 	UInteractiveToolsContext* ToolsContext;
 

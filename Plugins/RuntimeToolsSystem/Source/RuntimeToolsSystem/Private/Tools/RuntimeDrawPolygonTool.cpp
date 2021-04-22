@@ -24,9 +24,11 @@ UInteractiveTool* URuntimeDrawPolygonToolBuilder::BuildTool(const FToolBuilderSt
 void URuntimeDrawPolygonTool::Setup()
 {
 	UDrawPolygonTool::Setup();
+	auto subsystem = this->TargetWorld->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(subsystem);
 
 	// initialize to drawing material
-	this->MaterialProperties->Material = URuntimeMeshSceneSubsystem::Get()->StandardMaterial;
+	this->MaterialProperties->Material = subsystem->StandardMaterial;
 
 	// mirror properties we want to expose at runtime 
 	RuntimeProperties = NewObject<URuntimeDrawPolygonToolProperties>(this);

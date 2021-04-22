@@ -23,6 +23,8 @@ void AToolsContextActor::BeginPlay()
 	ToolsSystem = UGameInstance::GetSubsystem<URuntimeToolsFrameworkSubsystem>(GameInstance);
 	ToolsSystem->SetContextActor(this);
 
+	SceneSystem = UGameInstance::GetSubsystem<URuntimeMeshSceneSubsystem>(GameInstance);
+
 #if WITH_EDITOR
 	// disable gizmo focus tracking
 	GizmoRenderingUtil::SetGlobalFocusedSceneViewTrackingEnabled(false);
@@ -371,7 +373,7 @@ void AToolsContextActor::OnDelete()
 {
 	if (ToolsSystem->HaveActiveTool() == false)
 	{
-		URuntimeMeshSceneSubsystem::Get()->DeleteSelectedSceneObjects();
+		SceneSystem->DeleteSelectedSceneObjects();
 	}
 }
 

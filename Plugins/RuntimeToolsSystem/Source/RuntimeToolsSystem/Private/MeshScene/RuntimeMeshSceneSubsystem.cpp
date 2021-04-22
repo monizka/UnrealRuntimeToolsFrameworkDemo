@@ -6,37 +6,26 @@
 
 #define LOCTEXT_NAMESPACE "URuntimeMeshSceneSubsystem"
 
-URuntimeMeshSceneSubsystem* URuntimeMeshSceneSubsystem::InstanceSingleton = nullptr;
-
-void URuntimeMeshSceneSubsystem::InitializeSingleton(URuntimeMeshSceneSubsystem* Subsystem)
+void URuntimeMeshSceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	check(InstanceSingleton == nullptr);
-	InstanceSingleton = Subsystem;
+	Super::Initialize(Collection);
 
 	// todo: expose these somehow?
-
 	UMaterial* DefaultObjectMaterial = LoadObject<UMaterial>(nullptr, TEXT("/RuntimeToolsSystem/Materials/DefaultObjectMaterial"));
-	InstanceSingleton->StandardMaterial = (DefaultObjectMaterial) ? DefaultObjectMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
+	StandardMaterial = (DefaultObjectMaterial) ? DefaultObjectMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
 
-	UMaterial* SelectionMaterial = LoadObject<UMaterial>(nullptr, TEXT("/RuntimeToolsSystem/Materials/SelectedMaterial"));
-	InstanceSingleton->SelectedMaterial = (SelectionMaterial) ? SelectionMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
+	UMaterial* SelectionMaterialPtr = LoadObject<UMaterial>(nullptr, TEXT("/RuntimeToolsSystem/Materials/SelectedMaterial"));
+	SelectedMaterial = (SelectionMaterialPtr) ? SelectionMaterialPtr : UMaterial::GetDefaultMaterial(MD_Surface);
 
-	UMaterial* WireframeMaterial = LoadObject<UMaterial>(nullptr, TEXT("/RuntimeToolsSystem/Materials/WireframeMaterial"));
-	WireframeMaterial = (WireframeMaterial) ? WireframeMaterial : UMaterial::GetDefaultMaterial(MD_Surface);
-	InstanceSingleton->WireframeMaterial = WireframeMaterial;
-	GEngine->WireframeMaterial = WireframeMaterial;
+	UMaterial* WireframeMaterialPtr = LoadObject<UMaterial>(nullptr, TEXT("/RuntimeToolsSystem/Materials/WireframeMaterial"));
+	WireframeMaterialPtr = (WireframeMaterialPtr) ? WireframeMaterialPtr : UMaterial::GetDefaultMaterial(MD_Surface);
+	WireframeMaterial = WireframeMaterialPtr;
+	//GEngine->WireframeMaterial = WireframeMaterialPtr;
 }
-
-
-URuntimeMeshSceneSubsystem* URuntimeMeshSceneSubsystem::Get()
-{
-	return InstanceSingleton;
-}
-
 
 void URuntimeMeshSceneSubsystem::Deinitialize()
 {
-	InstanceSingleton = nullptr;
+	Super::Deinitialize();
 }
 
 
@@ -375,25 +364,31 @@ void URuntimeMeshSceneSubsystem::RemoveSceneObjectInternal(URuntimeMeshSceneObje
 
 void FAddRemoveSceneObjectChange::Apply(UObject* Object)
 {
+	auto subsystem = Object->GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(subsystem);
+
 	if (bAdded)
 	{
-		URuntimeMeshSceneSubsystem::Get()->AddSceneObjectInternal(SceneObject, true);
+		subsystem->AddSceneObjectInternal(SceneObject, true);
 	}
 	else
 	{
-		URuntimeMeshSceneSubsystem::Get()->RemoveSceneObjectInternal(SceneObject, true);
+		subsystem->RemoveSceneObjectInternal(SceneObject, true);
 	}
 }
 
 void FAddRemoveSceneObjectChange::Revert(UObject* Object)
 {
+	auto subsystem = Object->GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+	check(subsystem);
+
 	if (bAdded)
 	{
-		URuntimeMeshSceneSubsystem::Get()->RemoveSceneObjectInternal(SceneObject, true);
+		subsystem->RemoveSceneObjectInternal(SceneObject, true);
 	}
 	else
 	{
-		URuntimeMeshSceneSubsystem::Get()->AddSceneObjectInternal(SceneObject, true);
+		subsystem->AddSceneObjectInternal(SceneObject, true);
 	}
 }
 

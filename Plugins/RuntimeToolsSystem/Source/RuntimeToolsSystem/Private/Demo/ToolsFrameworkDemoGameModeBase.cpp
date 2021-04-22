@@ -37,16 +37,13 @@ void AToolsSystemDemoGameModeBase::InitializeToolsSystem()
 
 	// create Scene subsystem
 	SceneSystem = UGameInstance::GetSubsystem<URuntimeMeshSceneSubsystem>(GameInstance);
-	URuntimeMeshSceneSubsystem::InitializeSingleton(SceneSystem);
+	check(SceneSystem);
 
-	// create Tools subsystem
+	// create Tool subsystem
 	ToolsSystem = UGameInstance::GetSubsystem<URuntimeToolsFrameworkSubsystem>(GameInstance);
-	URuntimeToolsFrameworkSubsystem::InitializeSingleton(ToolsSystem);
-
-	check(SceneSystem && ToolsSystem);
+	check(ToolsSystem);
 
 	// initialize Tools and Scene systems
-	ToolsSystem->InitializeToolsContext(World);
 	SceneSystem->SetCurrentTransactionsAPI(ToolsSystem->GetTransactionsAPI());
 
 	RegisterTools();
@@ -104,11 +101,6 @@ void AToolsSystemDemoGameModeBase::ShutdownToolsSystem()
 void AToolsSystemDemoGameModeBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	if (ToolsSystem)
-	{
-		ToolsSystem->Tick(DeltaTime);
-	}
 }
 
 

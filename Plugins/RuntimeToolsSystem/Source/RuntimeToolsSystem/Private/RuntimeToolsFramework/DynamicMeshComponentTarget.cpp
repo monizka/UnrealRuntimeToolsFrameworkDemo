@@ -76,7 +76,12 @@ void FSimpleDynamicMeshComponentTarget::CommitMesh(const FCommitter& ModifyFunc)
 	TUniquePtr<FMeshReplacementChange> ReplaceChange = MakeUnique<FMeshReplacementChange>(MeshBefore, MeshAfter);
 	MeshComponent->ApplyChange(ReplaceChange.Get(), false);
 
-	URuntimeToolsFrameworkSubsystem::Get()->GetTransactionsAPI()->AppendChange(MeshComponent, MoveTemp(ReplaceChange),
+	auto world = GetOwnerActor()->GetWorld();
+	check(world);
+	auto subsystem = world->GetGameInstance()->GetSubsystem<URuntimeToolsFrameworkSubsystem>();
+	check(subsystem);
+	
+	subsystem->GetTransactionsAPI()->AppendChange(MeshComponent, MoveTemp(ReplaceChange),
 		LOCTEXT("UpdateMeshChange", "Update Mesh"));
 }
 

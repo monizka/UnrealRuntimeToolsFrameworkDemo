@@ -57,9 +57,12 @@ void URuntimeMeshBooleanTool::Shutdown(EToolShutdownType ShutdownType)
 			Converter.Convert(Result.Mesh.Get(), *CommitParams.MeshDescription);
 		});
 
-		URuntimeMeshSceneObject* SO = URuntimeMeshSceneSubsystem::Get()->FindSceneObjectByActor(KeepActor);
-		URuntimeMeshSceneSubsystem::Get()->SetSelected(SO, true, false);
-		URuntimeMeshSceneSubsystem::Get()->DeleteSelectedSceneObjects(KeepActor);
+		auto subsystem = KeepActor->GetWorld()->GetGameInstance()->GetSubsystem<URuntimeMeshSceneSubsystem>();
+		check(subsystem);
+
+		URuntimeMeshSceneObject* SO = subsystem->FindSceneObjectByActor(KeepActor);
+		subsystem->SetSelected(SO, true, false);
+		subsystem->DeleteSelectedSceneObjects(KeepActor);
 
 		GetToolManager()->EndUndoTransaction();
 	}

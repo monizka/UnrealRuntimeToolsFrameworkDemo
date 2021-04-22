@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/GameInstanceSubsystem.h"
+#include "RuntimeToolsBaseSubsystem.h"
 #include "InteractiveToolsContext.h"
 #include "RuntimeMeshSceneObject.h"
 #include "RuntimeMeshSceneSubsystem.generated.h"
@@ -25,14 +25,11 @@ class RUNTIMETOOLSSYSTEM_API URuntimeMeshSceneSubsystem : public UGameInstanceSu
 	GENERATED_BODY()
 
 public:
-	static void InitializeSingleton(URuntimeMeshSceneSubsystem* Subsystem);
-	static URuntimeMeshSceneSubsystem* Get();
-protected:
-	static URuntimeMeshSceneSubsystem* InstanceSingleton;
-
-public:
+	//
+	// UGameInstanceSubsystem API implementation
+	//
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-
 
 	virtual void SetCurrentTransactionsAPI(IToolsContextTransactionsAPI* TransactionsAPI);
 

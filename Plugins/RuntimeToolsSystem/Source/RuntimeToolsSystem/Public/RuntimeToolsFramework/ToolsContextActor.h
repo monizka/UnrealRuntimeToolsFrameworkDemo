@@ -5,7 +5,7 @@
 #include "ToolsContextActor.generated.h"
 
 class URuntimeToolsFrameworkSubsystem;
-
+class URuntimeMeshSceneSubsystem;
 /**
  * Camera-control modes that AToolsContextActor has implemented
  */
@@ -66,6 +66,7 @@ public:
 
 protected:
 	URuntimeToolsFrameworkSubsystem* ToolsSystem;
+	URuntimeMeshSceneSubsystem* SceneSystem;
 
 	EToolActorInteractionMode CurrentInteractionMode = EToolActorInteractionMode::NoInteraction;
 	bool bIsRightMouseDown = false;
